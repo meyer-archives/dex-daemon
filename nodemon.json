@@ -1,0 +1,12 @@
+{
+    "verbose": true,
+    "ignore": [
+        ".tm_properties",
+        "untitled.txt",
+        "nodex_modules/",
+        "public/*"
+    ],
+    "events": {
+        "restart": "osascript -e 'display notification \"app restarted\" with title \"nodemon\"'"
+    }
+}
