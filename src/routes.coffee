@@ -1,5 +1,12 @@
+_ = require "lodash"
+
 module.exports = (server, restify) ->
 	urlHandler = require "./url-handler"
+
+	staticOptions = {
+		directory: global.dex_cache_dir
+		maxAge: 60 * 60 * 12 # 12 hours
+	}
 
 	server.use restify.CORS()
 	server.pre restify.pre.userAgentConnection()
@@ -17,21 +24,21 @@ module.exports = (server, restify) ->
 
 	# Load module CSS/JS/JSON
 	server.get(
-		/^\/([^\/]+\.[^\/]+)\.(css|js|json)$/
+		/^\/(global|[^\/]+\.[^\/]+)\.(css|js|json)$/
 		urlHandler.moduleContents
-		restify.serveStatic { directory: global.dex_cache_dir }
+		restify.serveStatic staticOptions
 	)
 
 	server.get(
-		/^\/generate\/([^\/]+\.[^\/]+)(\.(css|json|js))?$/
+		/^\/generate\/(global|[^\/]+\.[^\/]+)(\.(css|json|js))?$/
 		urlHandler.moduleGenerateSite
 	)
 
 	# Config update
 	server.post(
-		/^\/([^\/]+\.[^\/]+)\.json$/
+		/^\/(global|[^\/]+\.[^\/]+)\.json$/
 		urlHandler.configPost
-		restify.serveStatic { directory: global.dex_cache_dir }
+		restify.serveStatic staticOptions
 	)
 
 	# Edit existing modules
@@ -50,12 +57,9 @@ module.exports = (server, restify) ->
 	server.get(
 		/^\/([^\/]+)\/([^\/]+)\/([^\/]+)\.(png|svg|json|js|css)$/
 		urlHandler.serveStatic
-		restify.serveStatic { directory: global.dex_file_dir }
+		restify.serveStatic _.extend(staticOptions, directory: global.dex_file_dir)
 	)
 
 	server.pre urlHandler.beforeRequest
 	server.on "after", urlHandler.afterRequest
-
-	# server.use urlHandler.notFoundHandler
-
 	server.on "uncaughtException", urlHandler.pageErrorHandler

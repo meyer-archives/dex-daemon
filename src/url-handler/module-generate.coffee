@@ -10,6 +10,8 @@ coffee = require "coffee-script"
 module.exports = (request, response, next) ->
 	config = configUtils.getConfig()
 
+	console.log "GOT FRESH CONFIG"
+
 	{
 		metadata
 		modulesByHostname
@@ -18,12 +20,85 @@ module.exports = (request, response, next) ->
 	fs.deleteSync global.dex_cache_dir
 	fs.mkdirSync global.dex_cache_dir
 
+	buildSiteFiles("404", config)
+	console.log "\n"
+
 	Object.keys(modulesByHostname.enabled).forEach (hostname) ->
 		buildSiteFiles(hostname, config)
+		console.log "\n"
 
 	response.send 200, config
 	do next
 
+
+buildFile = (hostname, allFiles, enabledFiles) ->
+	returnData = allFiles.map (f) ->
+		return false unless ~enabledFiles.indexOf(f)
+
+		data = fs.readFileSync path.join(global.dex_file_dir, f), encoding: "utf8"
+
+		c = ""
+		ext = path.extname(f)
+
+		switch ext
+			when ".scss", ".sass"
+				try
+					data = sass.renderSync({data}).css
+					c = " (compiled)"
+				catch e
+					console.error "\nSass compile error".red
+					console.error "#{e}"
+					data = "/* Sass compile error: #{e} */"
+
+			when ".coffee"
+				try
+					data = coffee.compile(data)
+					c = " (compiled)"
+				catch e
+					console.error "\nCoffeeScript compile error".red
+					console.error "#{path.join global.dex_file_dir, f}:#{e.location.first_line+1}:#{e.location.first_column+1}".underline
+					console.log "\n#{e}"
+					data = "console.error(\"CoffeeScript compile error: #{e.toString()}\");"
+
+		switch ext
+			when ".css", ".scss", ".sass"
+				"""
+				/* @begin #{f}#{c} */
+
+				#{data}
+
+				/* @end #{f}#{c} */
+				"""
+
+			when ".js", ".coffee"
+				"""
+				console.group("#{f}#{c}");
+
+				#{data}
+
+				console.groupEnd("#{f}#{c}")
+				"""
+
+			else
+				console.error "Unsupported filetype: #{ext}"
+
+	"""
+	/*
+	#{configUtils.getDexVersionString()}
+	#{configUtils.getDateString()}
+
+	#{
+	allFiles.map((m) ->
+		if ~enabledFiles.indexOf(m)
+			"[x] #{m}"
+		else
+			"[ ] #{m}"
+	).join("\n")
+	}
+	*/
+
+	#{_.remove(returnData, (n) -> n).join("\n\n/***********/\n\n")}
+	"""
 
 buildSiteFiles = (hostname, config) ->
 	config ?= configUtils.getConfig()
@@ -33,194 +108,92 @@ buildSiteFiles = (hostname, config) ->
 		modulesByHostname
 	} = config
 
-	console.log "Building site files for #{hostname} (#{(modulesByHostname.enabled[hostname] || []).length})".underline
+	# Files to write (maybe)
+	jsFilename = path.join(global.dex_cache_dir, "#{hostname}.js")
+	cssFilename = path.join(global.dex_cache_dir, "#{hostname}.css")
+	jsonFilename = path.join(global.dex_cache_dir, "#{hostname}.json")
+
+	# Enabled modules
+	jsModules = []
+	cssModules = []
+
+	jsFiles = []
+	cssFiles = []
+
+	enabledJSFiles = []
+	enabledCSSFiles = []
+
+	if hostname == "404"
+		console.log "Building files for 404 errors"
+		fs.writeFile jsFilename, "/* I can't even. */"
+		fs.writeFile cssFilename, "/* Nothin' here, man. */"
+		fs.writeFile jsonFilename, JSON.stringify({
+			metadata
+			site_available:   []
+			site_enabled:     []
+			global_available: modulesByHostname.available["global"]
+			global_enabled:   modulesByHostname.enabled["global"]
+		}, null, "  ")
+
+		return
+
+	console.log "Building files for #{hostname} (#{(modulesByHostname.enabled[hostname] || []).length})".underline
 
 	globtions = _.extend configUtils.globtions, {nodir: true}
 
-	globalModules =
-		available: modulesByHostname.available["global"] || []
-		enabled:   modulesByHostname.enabled["global"] || []
+	cssModules = modulesByHostname.enabled[hostname] || []
+	jsModules = [hostname].concat cssModules
 
-	jsModules = [].concat hostname, (modulesByHostname.enabled[hostname] || [])
-	cssModules = [].concat (modulesByHostname.enabled[hostname] || [])
+	# Start with available utilities
+	if hostname != "global"
+		jsFiles = glob.sync("utilities/*.{js,coffee}", globtions)
+		cssFiles = glob.sync("utilities/*.{css,scss,sass}", globtions)
 
-	globalJSModules = modulesByHostname.enabled["global"] || []
-	globalCSSModules = modulesByHostname.enabled["global"] || []
+	jsFiles = jsFiles.concat(
+		glob.sync("#{hostname}/*.{js,coffee}", globtions)
+		glob.sync("#{hostname}/*/*.{js,coffee}", globtions)
+	)
+	cssFiles = cssFiles.concat glob.sync("#{hostname}/*/*.{css,scss,sass}", globtions)
 
-	###
-	These arrays have to be built with several globs concatenated together
-	because node-glob doesn't preserve any sort of order.
-	###
-	jsFiles = []
-	globalJSFiles = glob("global/*/*.{js,coffee}", globtions)
-	enabledJSFiles = glob("{#{globalJSModules.join(",")}}/*.{js,coffee}", globtions)
+	console.log "cssFiles: [\n  #{cssFiles.join("\n  ")}\n]"
+	console.log "enabledCSSFiles: [\n  #{enabledCSSFiles.join("\n  ")}\n]"
 
-	cssFiles = []
-	globalCSSFiles = glob("global/*/*.{css,scss,sass}", globtions)
-	enabledCSSFiles = glob("{#{globalCSSModules.join(",")}}/*.{css,scss,sass}", globtions)
+	# Build array of JS and CSS files
+	if jsModules.length > 0
+		enabledJSFiles = glob.sync("{#{jsModules.join(",")}}/*.{js,coffee}", globtions)
 
-	unless hostname == "global"
-		jsFiles = [].concat(
-			glob("utilities/*.{js,coffee}", globtions)
-			glob("#{hostname}/*.{js,coffee}", globtions)
-			glob("#{hostname}/*/*.{js,coffee}", globtions)
-		)
+	console.log "cssModules: [\n  #{cssModules.join("\n  ")}\n]"
+	console.log "globStr: {#{cssModules.join(",")}}/*.{css,scss,sass}"
+	if cssModules.length > 0
+		enabledCSSFiles = glob.sync("{#{cssModules.join(",")}}/*.{css,scss,sass}", globtions)
 
-		enabledJSFiles = enabledJSFiles.concat(
-			glob("{#{jsModules.join(",")}}/*.{js,coffee}", globtions)
-		)
-
-		cssFiles = [].concat(
-			glob("utilities/*.{css,scss,sass}", globtions)
-			glob("#{hostname}/*/*.{css,scss,sass}", globtions)
-		)
-
-		enabledCSSFiles = enabledCSSFiles.concat(
-			glob("{#{cssModules.join(",")}}/*.{css,scss,sass}", globtions)
-		)
-
+	# Build JS, CSS, and JSON files for hostname
 	if enabledJSFiles.length > 0
-
-		jsFileHeader = [].concat(
-			"/*"
-			"#{configUtils.getDexVersionString()}"
-			"#{configUtils.getDateString()}"
-			""
-		)
-
-		jsFileHeader = jsFileHeader.concat(
-			"Global JS files"
-			"---------------"
-			_.map globalJSFiles, (m) ->
-				if ~enabledJSFiles.indexOf(m)
-					"[x] #{m}"
-				else
-					"[ ] #{m}"
-			""
-			"Enabled global modules"
-			"----------------------"
-			globalJSModules
-			""
-		)
-
-		unless hostname == "global"
-			jsFileHeader = jsFileHeader.concat(
-				"Host-specific JS files"
-				"----------------------"
-				_.map jsFiles, (m) ->
-					if ~enabledJSFiles.indexOf(m)
-						"[x] #{m}"
-					else
-						"[ ] #{m}"
-				""
-				"Enabled host-specific modules"
-				"-----------------------------"
-				jsModules
-				""
-			)
-
-		jsFileHeader.push "*/"
-
-		jsFileHeader = jsFileHeader.join("\n") + "\n\n"
-
-		jsData = jsFileHeader + [].concat(globalJSFiles, jsFiles).map((f) ->
-			return unless ~enabledJSFiles.indexOf(f)
-
-			data = fs.readFileSync path.join(global.dex_file_dir, f), encoding: "utf8"
-
-			if path.extname(f) == ".coffee"
-				try
-					data = coffee.compile(data)
-				catch e
-					data = "// CoffeeScript error: #{e}"
-
-			[
-				"console.groupCollapsed('#{f}');"
-				data
-				"console.groupEnd();"
-				""
-			].join("\n\n")
-		).join("")
-
-		console.log "Writing", path.join(global.dex_cache_dir, "#{hostname}.js")
-		fs.writeFile path.join(global.dex_cache_dir, "#{hostname}.js"), jsData
+		jsData = buildFile(hostname, jsFiles, enabledJSFiles)
+		console.log "Writing #{jsFilename}"
+		fs.writeFile jsFilename, jsData
+	else
+		console.log "Didn't write #{jsFilename}"
 
 	if enabledCSSFiles.length > 0
-		cssFileHeader = [].concat(
-			"/*"
-			"#{configUtils.getDexVersionString()}"
-			"#{configUtils.getDateString()}"
-			""
-		)
+		cssData = buildFile(hostname, cssFiles, enabledCSSFiles)
+		console.log "Writing #{cssFilename}"
+		fs.writeFile cssFilename, cssData
+	else
+		console.log "Didn't write #{cssFilename}"
 
-		cssFileHeader = cssFileHeader.concat(
-			"Global CSS files"
-			"----------------"
-			_.map globalCSSFiles, (m) ->
-				if ~enabledCSSFiles.indexOf(m)
-					"[x] #{m}"
-				else
-					"[ ] #{m}"
-			""
-			"Enabled global modules"
-			"----------------------"
-			globalCSSModules
-			""
-		)
+	if modulesByHostname.available[hostname]
+		jsonData = JSON.stringify({
+			metadata
+			site_available:   modulesByHostname.available[hostname]
+			site_enabled:     modulesByHostname.enabled[hostname]
+			global_available: modulesByHostname.available["global"]
+			global_enabled:   modulesByHostname.enabled["global"]
+		}, null, "  ")
 
-		unless hostname == "global"
-			cssFileHeader = cssFileHeader.concat(
-				"Host-specific CSS files"
-				"----------------------"
-				_.map cssFiles, (m) ->
-					if ~enabledCSSFiles.indexOf(m)
-						"[x] #{m}"
-					else
-						"[ ] #{m}"
-				""
-				"Enabled host-specific modules"
-				"-----------------------------"
-				cssModules
-				""
-			)
+		console.log "Writing #{jsonFilename}"
+		fs.writeFile jsonFilename, jsonData
+	else
+		console.log "Didn't write #{jsonFilename}"
 
-		cssFileHeader.push "*/"
-
-		cssFileHeader = cssFileHeader.join("\n") + "\n\n"
-
-		cssData = cssFileHeader + [].concat(globalCSSFiles, cssFiles).map((f) ->
-			return unless ~enabledCSSFiles.indexOf(f)
-
-			data = fs.readFileSync path.join(global.dex_file_dir, f), encoding: "utf8"
-
-			c = ""
-
-			if ~[".scss",".sass"].indexOf path.extname(f)
-				try
-					data = sass.renderSync {data}
-					c = " (compiled)"
-				catch e
-					data = "/* Sass error: #{e} */"
-
-			[
-				"/* @begin #{f}#{c} */"
-				data
-				"/* @end #{f}#{c} */"
-				""
-			].join("\n\n")
-		).join("")
-
-		console.log "Writing", path.join(global.dex_cache_dir, "#{hostname}.css")
-		fs.writeFile path.join(global.dex_cache_dir, "#{hostname}.css"), cssData
-
-	jsonData = JSON.stringify({
-		metadata
-		site_available:   modulesByHostname.available[hostname]
-		site_enabled:     modulesByHostname.enabled[hostname]
-		global_available: modulesByHostname.available["global"]
-		global_enabled:   modulesByHostname.enabled["global"]
-	}, null, "  ")
-
-	console.log "Writing", path.join(global.dex_cache_dir, "#{hostname}.json")
-	fs.writeFile path.join(global.dex_cache_dir, "#{hostname}.json"), jsonData
-	console.log "\n"
+	return

@@ -14,7 +14,6 @@ markedOptions =
 
 globtions = {
 	cwd: global.dex_file_dir
-	sync: true
 	# debug: true
 }
 
@@ -58,12 +57,11 @@ getConfig = ->
 			global.dex_yaml_config_file,
 			encoding: "utf8"
 		)
+		console.info "Loaded #{global.dex_yaml_config_file}".bold
+		console.info "#{Object.keys(userConfig).length} sites configured.\n"
 	catch e
-		next new Error "YAML load error! #{e}"
+		console.error "YAML load error! #{e}"
 		return {}
-
-	# try
-	# 	dexConfig = readJsonSync
 
 	unless typeof userConfig == "object"
 		next new Error [
@@ -80,7 +78,8 @@ getConfig = ->
 	availableGlobalModules = []
 	availableUtilities = []
 
-	validModules = glob("{global,utilities,*.*}/*/", globtions).map (str) ->
+	# TODO: Why the fuck is this not working?!
+	validModules = glob.sync("{global,utilities,*.*}/*/", globtions).map (str) ->
 		[hostname, module] = str.split("/", 2)
 		modulePath = "#{hostname}/#{module}"
 
@@ -119,7 +118,7 @@ getConfig = ->
 				availableModulesByHostname[hostname] ?= []
 				availableModulesByHostname[hostname].push modulePath
 
-		"#{hostname}/#{module}"
+		modulePath
 
 	hostnames = _.union(Object.keys(userConfig), Object.keys(availableModulesByHostname))
 

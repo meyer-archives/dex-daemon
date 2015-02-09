@@ -14,7 +14,7 @@ module.exports = (request, response, next) ->
 
 	# Already generated
 	if !fs.existsSync filename
-		request.url = "/global.#{ext}"
+		request.url = "/404.#{ext}"
 
 	do next
 	return
