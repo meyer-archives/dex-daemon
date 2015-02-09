@@ -18,11 +18,8 @@ module.exports = (request, response, next) ->
 		next new Error("URL is invalid (#{filename}, #{global.dex_cache_dir})")
 		return
 
-	[hostname, ext] = _.values request.params
-
-	# Already generated
 	if !fs.existsSync filename
-		request.url = "/404.#{ext}"
+		request.url = "/_default.#{ext}"
 
 	do next
 	return

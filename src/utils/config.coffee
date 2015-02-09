@@ -168,13 +168,14 @@ getConfig = ->
 		return
 
 	# Here's the biz
-	metadata: metadataByModuleName
 
 	modulesByHostname:
 		available: availableModulesByHostname
 		enabled:   enabledModulesByHostname
 		invalid:   invalidModulesByHostname
 		utilities: availableUtilities
+
+	metadata: metadataByModuleName
 
 module.exports.globtions = globtions
 module.exports.getConfig = getConfig

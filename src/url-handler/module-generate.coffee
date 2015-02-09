@@ -16,15 +16,33 @@ module.exports = (request, response, next) ->
 		modulesByHostname
 	} = config
 
-	fs.deleteSync global.dex_cache_dir
-	fs.mkdirSync global.dex_cache_dir
+	prams = _.values(request.params)
 
-	["404"].concat(Object.keys modulesByHostname.enabled).forEach (hostname) ->
-		buildSiteFiles(hostname, config)
-		console.log ""
+	switch prams.length
+		when 0
+			fs.deleteSync global.dex_cache_dir
+			fs.mkdirpSync global.dex_cache_dir
 
-	response.send 200, config
-	do next
+			["_default"].concat(Object.keys modulesByHostname.enabled).forEach (hostname) ->
+				buildSiteFiles urlUtils.cleanHostname(hostname), config
+				console.log ""
+
+			response.send 200, config
+			do next
+
+		when 1
+			hostname = urlUtils.cleanHostname(prams[0])
+			if modulesByHostname.enabled[hostname]
+				siteFiles = buildSiteFiles(hostname, config)
+			else
+				console.log "modulesByHostname does not contain \"#{prams[0]}\""
+				siteFiles = buildSiteFiles("_default", config)
+
+			response.send 200, siteFiles
+			do next
+
+		else
+			console.error "TOO MANY COOKS:", prams
 
 globArray = (d) ->
 	if Array.isArray(d) && d.length > 1
@@ -114,9 +132,15 @@ buildSiteFiles = (hostname, config) ->
 	cssFilename = path.join(global.dex_cache_dir, "#{hostname}.css")
 	jsonFilename = path.join(global.dex_cache_dir, "#{hostname}.json")
 
+	try fs.unlinkSync jsFilename
+	try fs.unlinkSync cssFilename
+	try fs.unlinkSync jsonFilename
+
+	globtions = _.extend configUtils.globtions, {nodir: true}
+
 	# Enabled modules
-	jsModules = []
-	cssModules = []
+	cssModules = modulesByHostname.enabled[hostname] || []
+	jsModules = [hostname].concat cssModules
 
 	jsFiles = []
 	cssFiles = []
@@ -124,29 +148,36 @@ buildSiteFiles = (hostname, config) ->
 	enabledJSFiles = []
 	enabledCSSFiles = []
 
-	if hostname == "404"
+	if hostname == "_default"
 		console.log "Building default files".underline
-		console.log "[x] #{jsFilename}"
-		fs.writeFile jsFilename, "/* I can't even. */"
-		console.log "[x] #{cssFilename}"
-		fs.writeFile cssFilename, "/* Nothin' here, man. */"
-		console.log "[x] #{jsonFilename}"
-		fs.writeFile jsonFilename, JSON.stringify({
-			metadata
+
+		siteConfig = {
 			site_available:   modulesByHostname.utilities
 			site_enabled:     []
 			global_available: modulesByHostname.available["global"]
 			global_enabled:   modulesByHostname.enabled["global"]
-		}, null, "  ")
+			metadata
+		}
 
-		return
+		console.log "[x] #{jsFilename}"
+		fs.writeFile jsFilename, "/* I can't even. */"
+
+		console.log "[x] #{cssFilename}"
+		fs.writeFile cssFilename, "/* Nothin' here, man. */"
+
+		console.log "[x] #{jsonFilename}"
+		fs.writeFile jsonFilename, JSON.stringify(siteConfig, null, "  ")
+
+		console.log ""
+
+		return siteConfig
 
 	console.log "Building files for #{hostname} (#{(modulesByHostname.enabled[hostname] || []).length})".underline
 
-	globtions = _.extend configUtils.globtions, {nodir: true}
-
-	cssModules = modulesByHostname.enabled[hostname] || []
-	jsModules = [hostname].concat cssModules
+	if process.cwd() != global.dex_file_dir
+		console.error "PWD has been changed!"
+		console.error "#{process.cwd()} != #{global.dex_file_dir}"
+		process.chdir global.dex_file_dir
 
 	# Start with available utilities
 	if hostname != "global"
@@ -181,19 +212,24 @@ buildSiteFiles = (hostname, config) ->
 	else
 		console.log "[ ] #{cssFilename}"
 
+	siteConfig = {}
+
 	if hostname != "global"
 		if (jsModules.length + cssModules.length) > 0
-			jsonData = JSON.stringify({
-				metadata
+			siteConfig = {
 				site_available:   modulesByHostname.available[hostname] || []
 				site_enabled:     modulesByHostname.enabled[hostname]   || []
 				global_available: modulesByHostname.available["global"] || []
 				global_enabled:   modulesByHostname.enabled["global"]   || []
-			}, null, "  ")
+				metadata
+			}
+			jsonData = JSON.stringify(siteConfig, null, "  ")
 
 			console.log "[x] #{jsonFilename}"
 			fs.writeFile jsonFilename, jsonData
 		else
 			console.log "[ ] #{jsonFilename}"
 
-	return
+	console.log ""
+
+	siteConfig

@@ -17,8 +17,21 @@ module.exports = (server, restify) ->
 		urlHandler.moduleIndex
 	)
 
+	# Generate all files for everything
 	server.get(
 		"/generate"
+		urlHandler.moduleGenerate
+	)
+
+	# Generate all files for specific site
+	server.get(
+		/^\/generate\/(global|[^\/]+\.[^\/]+)$/
+		urlHandler.moduleGenerate
+	)
+
+	# Generate a specific file
+	server.get(
+		/^\/generate\/(global|[^\/]+\.[^\/]+)(\.(css|json|js))?$/
 		urlHandler.moduleGenerate
 	)
 
@@ -27,11 +40,6 @@ module.exports = (server, restify) ->
 		/^\/(global|[^\/]+\.[^\/]+)\.(css|js|json)$/
 		urlHandler.moduleContents
 		restify.serveStatic staticOptions
-	)
-
-	server.get(
-		/^\/generate\/(global|[^\/]+\.[^\/]+)(\.(css|json|js))?$/
-		urlHandler.moduleGenerateSite
 	)
 
 	# Config update
@@ -51,13 +59,6 @@ module.exports = (server, restify) ->
 	server.get(
 		/^\/create\/(global|utilities|[^\/]+\.[^\/]+)\/([^\/]+)$/
 		urlHandler.moduleCreate
-	)
-
-	# Load static resources
-	server.get(
-		/^\/([^\/]+)\/([^\/]+)\/([^\/]+)\.(png|svg|json|js|css)$/
-		urlHandler.serveStatic
-		restify.serveStatic _.extend(staticOptions, directory: global.dex_file_dir)
 	)
 
 	server.pre urlHandler.beforeRequest
