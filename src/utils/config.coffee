@@ -17,6 +17,19 @@ globtions = {
 	# debug: true
 }
 
+_dirsOnly = (d) ->
+	if d.charAt(0) == "."
+		console.log "Ignoring dot: #{d}"
+		return false
+
+	stat = fs.statSync(d)
+
+	unless stat.isDirectory()
+		console.log "#{d} is not a directory"
+		return false
+
+	return true
+
 getDexVersionString = ->
 	"#{pkg.name} #{pkg.version}"
 
@@ -49,6 +62,10 @@ getConfigFileHeader = ->
 		"---"
 	].join("\n")
 
+
+
+
+
 getConfig = ->
 	fs.ensureFileSync global.dex_yaml_config_file
 
@@ -74,64 +91,86 @@ getConfig = ->
 	enabledModulesByHostname = {global: []}
 	invalidModulesByHostname = {global: []}
 	metadataByModuleName = {}
-
-	availableGlobalModules = []
 	availableUtilities = []
 
-	# TODO: Why the fuck is this not working?!
-	validModules = glob.sync("{global,utilities,*.*}/*/", globtions).map (str) ->
-		[hostname, module] = str.split("/", 2)
-		modulePath = "#{hostname}/#{module}"
-
-		metadata = {}
-		infoYaml = path.join(global.dex_file_dir, hostname, module, "info.yaml")
-
+	buildModuleListForHostname = (hostname) ->
 		try
-			fs.ensureFileSync(infoYaml)
+			console.log "HOSTNAME: #{hostname}"
+			process.chdir path.join(global.dex_file_dir, hostname)
 
-			try
-				metadata = yaml.safeLoad fs.readFileSync(infoYaml, "utf8")
-			catch e
-				console.error "YAML load error (#{modulePath}/info.yaml): #{e}"
+			fs.readdirSync(".").filter(_dirsOnly).map (module) ->
 				metadata = {}
-		catch
-			console.error "`#{modulePath}` has no `info.yaml`"
+				modulePath = path.join(hostname, module)
+				infoYaml = path.join(global.dex_file_dir, modulePath, "info.yaml")
 
-		metadata = _.extend {
-			Author: null
-			Description: null
-			URL: null
-		}, metadata, {
-			Category: hostname
-			Title: module
-		}
+				try
+					metadata = yaml.safeLoad fs.readFileSync(infoYaml, "utf8")
+				catch e
+					console.error "YAML load error (#{modulePath}/info.yaml): #{e}"
+					metadata = {}
 
-		if typeof metadata["Description"] == "string"
-			metadata["Description"] = marked(metadata["Description"], markedOptions)
+				metadata = _.extend {
+					Author: null
+					Description: null
+					URL: null
+				}, metadata, {
+					Category: hostname
+					Title: module
+				}
 
-		metadataByModuleName[modulePath] = metadata
+				if typeof metadata["Description"] == "string"
+					metadata["Description"] = marked(metadata["Description"], markedOptions)
 
-		switch hostname
-			when "utilities"
-				availableUtilities.push modulePath
+				metadataByModuleName[modulePath] = metadata
+
+				modulePath
+
+		catch e
+			console.log "Error: #{e}"
+			return {}
+
+	# Set some initial data
+	availableModulesByHostname["global"] = buildModuleListForHostname("global")
+	availableUtilities = buildModuleListForHostname("utilities")
+
+	process.chdir global.dex_file_dir
+	validModules = [].concat fs.readdirSync(".").filter(_dirsOnly).map (hostname) ->
+		unless /([^\/]+\.[^\/]+)/.test hostname
+			console.error "#{hostname} is not a valid directory"
+			return []
+
+		modules = buildModuleListForHostname(hostname)
+
+		console.log "SCOPE: #{hostname}"
+		console.log "MODULES:", modules
+		if modules.length > 0
+			if hostname == "global"
+				availableModulesByHostname[hostname] = modules
 			else
-				availableModulesByHostname[hostname] ?= []
-				availableModulesByHostname[hostname].push modulePath
+				availableModulesByHostname[hostname] = [].concat(
+					availableUtilities
+					modules
+				)
 
-		modulePath
+		modules
 
-	hostnames = _.union(Object.keys(userConfig), Object.keys(availableModulesByHostname))
+	hostnames = _.union(
+		Object.keys(userConfig)
+		Object.keys(availableModulesByHostname)
+	)
 
 	# Clean nonexistent modules
 	hostnames.forEach (hostname) ->
 		configModules = userConfig[hostname] || []
-
 		if hostname == "global"
-			availableForHost = availableModulesByHostname["global"].slice(0)
+			siteModules = availableModulesByHostname["global"]
 		else
-			availableForHost = _.union availableUtilities, availableModulesByHostname[hostname]
+			siteModules = [].concat(
+				availableModulesByHostname["global"]
+				(availableModulesByHostname[hostname] || availableUtilities)
+			)
 
-		enabledForHost = _.intersection(availableForHost, configModules)
+		enabledForHost = _.intersection(siteModules, configModules)
 		invalidForHost = _.xor(enabledForHost, configModules)
 
 		if enabledForHost.length > 0
@@ -148,6 +187,8 @@ getConfig = ->
 	modulesByHostname:
 		available: availableModulesByHostname
 		enabled:   enabledModulesByHostname
+		invalid:   invalidModulesByHostname
+		utilities: availableUtilities
 
 module.exports.globtions = globtions
 module.exports.getConfig = getConfig

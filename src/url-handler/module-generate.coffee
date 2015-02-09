@@ -129,7 +129,7 @@ buildSiteFiles = (hostname, config) ->
 		fs.writeFile cssFilename, "/* Nothin' here, man. */"
 		fs.writeFile jsonFilename, JSON.stringify({
 			metadata
-			site_available:   []
+			site_available:   modulesByHostname.utilities
 			site_enabled:     []
 			global_available: modulesByHostname.available["global"]
 			global_enabled:   modulesByHostname.enabled["global"]
@@ -155,15 +155,10 @@ buildSiteFiles = (hostname, config) ->
 	)
 	cssFiles = cssFiles.concat glob.sync("#{hostname}/*/*.{css,scss,sass}", globtions)
 
-	console.log "cssFiles: [\n  #{cssFiles.join("\n  ")}\n]"
-	console.log "enabledCSSFiles: [\n  #{enabledCSSFiles.join("\n  ")}\n]"
-
 	# Build array of JS and CSS files
 	if jsModules.length > 0
 		enabledJSFiles = glob.sync("{#{jsModules.join(",")}}/*.{js,coffee}", globtions)
 
-	console.log "cssModules: [\n  #{cssModules.join("\n  ")}\n]"
-	console.log "globStr: {#{cssModules.join(",")}}/*.{css,scss,sass}"
 	if cssModules.length > 0
 		enabledCSSFiles = glob.sync("{#{cssModules.join(",")}}/*.{css,scss,sass}", globtions)
 
@@ -182,18 +177,19 @@ buildSiteFiles = (hostname, config) ->
 	else
 		console.log "Didn't write #{cssFilename}"
 
-	if modulesByHostname.available[hostname]
-		jsonData = JSON.stringify({
-			metadata
-			site_available:   modulesByHostname.available[hostname]
-			site_enabled:     modulesByHostname.enabled[hostname]
-			global_available: modulesByHostname.available["global"]
-			global_enabled:   modulesByHostname.enabled["global"]
-		}, null, "  ")
+	if hostname != "global"
+		if modulesByHostname.available[hostname]
+			jsonData = JSON.stringify({
+				metadata
+				site_available:   modulesByHostname.available[hostname]
+				site_enabled:     modulesByHostname.enabled[hostname]
+				global_available: modulesByHostname.available["global"]
+				global_enabled:   modulesByHostname.enabled["global"]
+			}, null, "  ")
 
-		console.log "Writing #{jsonFilename}"
-		fs.writeFile jsonFilename, jsonData
-	else
-		console.log "Didn't write #{jsonFilename}"
+			console.log "Writing #{jsonFilename}"
+			fs.writeFile jsonFilename, jsonData
+		else
+			console.log "Didn't write #{jsonFilename}"
 
 	return
