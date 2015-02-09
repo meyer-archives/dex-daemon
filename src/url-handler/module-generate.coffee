@@ -2,6 +2,7 @@ _ = require "lodash"
 fs = require "fs-extra"
 path = require "path"
 glob = require "glob"
+urlUtils = require "../utils/url"
 configUtils = require "../utils/config"
 
 sass = require "node-sass"
