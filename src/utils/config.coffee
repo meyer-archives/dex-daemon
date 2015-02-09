@@ -18,16 +18,8 @@ globtions = {
 }
 
 _dirsOnly = (d) ->
-	if d.charAt(0) == "."
-		console.log "Ignoring dot: #{d}"
-		return false
-
-	stat = fs.statSync(d)
-
-	unless stat.isDirectory()
-		console.log "#{d} is not a directory"
-		return false
-
+	return false if d.charAt(0) == "."
+	return false unless fs.statSync(d).isDirectory()
 	return true
 
 getDexVersionString = ->
@@ -62,10 +54,6 @@ getConfigFileHeader = ->
 		"---"
 	].join("\n")
 
-
-
-
-
 getConfig = ->
 	fs.ensureFileSync global.dex_yaml_config_file
 
@@ -94,11 +82,12 @@ getConfig = ->
 	availableUtilities = []
 
 	buildModuleListForHostname = (hostname) ->
+		modulePaths = {}
+
 		try
-			console.log "HOSTNAME: #{hostname}"
 			process.chdir path.join(global.dex_file_dir, hostname)
 
-			fs.readdirSync(".").filter(_dirsOnly).map (module) ->
+			modulePaths = fs.readdirSync(".").filter(_dirsOnly).map (module) ->
 				metadata = {}
 				modulePath = path.join(hostname, module)
 				infoYaml = path.join(global.dex_file_dir, modulePath, "info.yaml")
@@ -126,31 +115,28 @@ getConfig = ->
 				modulePath
 
 		catch e
-			console.log "Error: #{e}"
-			return {}
+			console.log "buildModuleListForHostname error: #{e}"
+			modulePaths = {}
+
+		process.chdir global.dex_file_dir
+
+		return modulePaths
 
 	# Set some initial data
 	availableModulesByHostname["global"] = buildModuleListForHostname("global")
 	availableUtilities = buildModuleListForHostname("utilities")
 
 	process.chdir global.dex_file_dir
+
 	validModules = [].concat fs.readdirSync(".").filter(_dirsOnly).map (hostname) ->
-		unless /([^\/]+\.[^\/]+)/.test hostname
-			console.error "#{hostname} is not a valid directory"
-			return []
+		return [] unless /([^\/]+\.[^\/]+)/.test hostname
 
 		modules = buildModuleListForHostname(hostname)
 
-		console.log "SCOPE: #{hostname}"
-		console.log "MODULES:", modules
-		if modules.length > 0
-			if hostname == "global"
-				availableModulesByHostname[hostname] = modules
-			else
-				availableModulesByHostname[hostname] = [].concat(
-					availableUtilities
-					modules
-				)
+		availableModulesByHostname[hostname] = [].concat(
+			availableUtilities
+			modules
+		)
 
 		modules
 

@@ -10,8 +10,6 @@ coffee = require "coffee-script"
 module.exports = (request, response, next) ->
 	config = configUtils.getConfig()
 
-	console.log "GOT FRESH CONFIG"
-
 	{
 		metadata
 		modulesByHostname
@@ -20,16 +18,18 @@ module.exports = (request, response, next) ->
 	fs.deleteSync global.dex_cache_dir
 	fs.mkdirSync global.dex_cache_dir
 
-	buildSiteFiles("404", config)
-	console.log "\n"
-
-	Object.keys(modulesByHostname.enabled).forEach (hostname) ->
+	["404"].concat(Object.keys modulesByHostname.enabled).forEach (hostname) ->
 		buildSiteFiles(hostname, config)
-		console.log "\n"
+		console.log ""
 
 	response.send 200, config
 	do next
 
+globArray = (d) ->
+	if Array.isArray(d) && d.length > 1
+		"{#{d.join(",")}}"
+	else
+		"#{d}"
 
 buildFile = (hostname, allFiles, enabledFiles) ->
 	returnData = allFiles.map (f) ->
@@ -124,9 +124,12 @@ buildSiteFiles = (hostname, config) ->
 	enabledCSSFiles = []
 
 	if hostname == "404"
-		console.log "Building files for 404 errors"
+		console.log "Building default files".underline
+		console.log "[x] #{jsFilename}"
 		fs.writeFile jsFilename, "/* I can't even. */"
+		console.log "[x] #{cssFilename}"
 		fs.writeFile cssFilename, "/* Nothin' here, man. */"
+		console.log "[x] #{jsonFilename}"
 		fs.writeFile jsonFilename, JSON.stringify({
 			metadata
 			site_available:   modulesByHostname.utilities
@@ -146,8 +149,8 @@ buildSiteFiles = (hostname, config) ->
 
 	# Start with available utilities
 	if hostname != "global"
-		jsFiles = glob.sync("utilities/*.{js,coffee}", globtions)
-		cssFiles = glob.sync("utilities/*.{css,scss,sass}", globtions)
+		jsFiles = glob.sync("utilities/*/*.{js,coffee}", globtions)
+		cssFiles = glob.sync("utilities/*/*.{css,scss,sass}", globtions)
 
 	jsFiles = jsFiles.concat(
 		glob.sync("#{hostname}/*.{js,coffee}", globtions)
@@ -157,39 +160,39 @@ buildSiteFiles = (hostname, config) ->
 
 	# Build array of JS and CSS files
 	if jsModules.length > 0
-		enabledJSFiles = glob.sync("{#{jsModules.join(",")}}/*.{js,coffee}", globtions)
+		enabledJSFiles = glob.sync("#{globArray jsModules}/*.{js,coffee}", globtions)
 
 	if cssModules.length > 0
-		enabledCSSFiles = glob.sync("{#{cssModules.join(",")}}/*.{css,scss,sass}", globtions)
+		enabledCSSFiles = glob.sync("#{globArray cssModules}/*.{css,scss,sass}", globtions)
 
 	# Build JS, CSS, and JSON files for hostname
 	if enabledJSFiles.length > 0
 		jsData = buildFile(hostname, jsFiles, enabledJSFiles)
-		console.log "Writing #{jsFilename}"
+		console.log "[x] #{jsFilename}"
 		fs.writeFile jsFilename, jsData
 	else
-		console.log "Didn't write #{jsFilename}"
+		console.log "[ ] #{jsFilename}"
 
 	if enabledCSSFiles.length > 0
 		cssData = buildFile(hostname, cssFiles, enabledCSSFiles)
-		console.log "Writing #{cssFilename}"
+		console.log "[x] #{cssFilename}"
 		fs.writeFile cssFilename, cssData
 	else
-		console.log "Didn't write #{cssFilename}"
+		console.log "[ ] #{cssFilename}"
 
 	if hostname != "global"
-		if modulesByHostname.available[hostname]
+		if (jsModules.length + cssModules.length) > 0
 			jsonData = JSON.stringify({
 				metadata
-				site_available:   modulesByHostname.available[hostname]
-				site_enabled:     modulesByHostname.enabled[hostname]
-				global_available: modulesByHostname.available["global"]
-				global_enabled:   modulesByHostname.enabled["global"]
+				site_available:   modulesByHostname.available[hostname] || []
+				site_enabled:     modulesByHostname.enabled[hostname]   || []
+				global_available: modulesByHostname.available["global"] || []
+				global_enabled:   modulesByHostname.enabled["global"]   || []
 			}, null, "  ")
 
-			console.log "Writing #{jsonFilename}"
+			console.log "[x] #{jsonFilename}"
 			fs.writeFile jsonFilename, jsonData
 		else
-			console.log "Didn't write #{jsonFilename}"
+			console.log "[ ] #{jsonFilename}"
 
 	return
