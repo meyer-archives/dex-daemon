@@ -6,24 +6,32 @@ restify = require "restify"
 
 pkg = require "./package.json"
 
-# Saving cwd as it's about to change
+# Save cwd as it's about to change
 global.dex_dir = process.cwd()
 global.dex_public_dir = path.join(global.dex_dir, "public")
 
-global.dex_yaml_config_file = path.resolve \
-	(process.env.DEX_CONFIG_DIR || global.dex_public_dir), ".dex-enabled.yaml"
+# Set defaults
+process.env.DEX_CONFIG_DIR = process.env.DEX_CONFIG_DIR || global.dex_public_dir
+process.env.DEX_CACHE_DIR = process.env.DEX_CACHE_DIR || global.dex_public_dir
+process.env.DEX_FILE_DIR = process.env.DEX_FILE_DIR || path.join(global.dex_public_dir, "demo-modules")
 
-global.dex_cache_dir = path.resolve \
-	(process.env.DEX_CACHE_DIR || global.dex_public_dir), ".dex-cache"
+# Get absolute paths
+global.dex_yaml_config_file = path.resolve(process.env.DEX_CONFIG_DIR, ".dex-enabled.yaml")
+global.dex_cache_dir = path.resolve(process.env.DEX_CACHE_DIR, ".dex-cache")
+global.dex_file_dir = path.resolve(process.env.DEX_FILE_DIR)
 
-global.dex_file_dir = path.resolve \
-	process.env.DEX_FILE_DIR || path.join(global.dex_public_dir, "demo-modules")
+# Make sure all this stuff exists
+fs.ensureFileSync global.dex_yaml_config_file
+fs.mkdirpSync global.dex_cache_dir
+fs.mkdirpSync global.dex_file_dir
 
+# Expand symlinks
+global.dex_yaml_config_file = fs.realpathSync global.dex_yaml_config_file
+global.dex_cache_dir = fs.realpathSync global.dex_cache_dir
+global.dex_file_dir = fs.realpathSync global.dex_file_dir
+
+# Change to dexfile folder
 process.chdir global.dex_file_dir
-
-# Attempt to resolve symlinks
-try global.dex_yaml_config_file = fs.realpathSync global.dex_yaml_config_file
-try global.dex_cache_dir = fs.realpathSync global.dex_cache_dir
 
 serverOptions =
 	name: pkg.name
