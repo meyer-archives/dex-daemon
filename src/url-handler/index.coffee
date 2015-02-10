@@ -4,6 +4,7 @@ exports.moduleEdit =         require "./module-edit"
 exports.moduleCreate =       require "./module-create"
 exports.moduleGenerate =     require "./module-generate"
 exports.configPost =         require "./module-config-post"
+exports.getModuleData =      require "./module-get-all"
 
 exports.beforeRequest =      require "./request-before"
 exports.afterRequest =       require "./request-after"

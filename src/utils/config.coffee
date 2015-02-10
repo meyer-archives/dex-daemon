@@ -77,7 +77,7 @@ getConfig = ->
 
 	availableModulesByHostname = {global: []}
 	enabledModulesByHostname = {global: []}
-	invalidModulesByHostname = {global: []}
+	invalidModulesByHostname = {}
 	metadataByModuleName = {}
 	availableUtilities = []
 
@@ -130,15 +130,7 @@ getConfig = ->
 
 	validModules = [].concat fs.readdirSync(".").filter(_dirsOnly).map (hostname) ->
 		return [] unless /([^\/]+\.[^\/]+)/.test hostname
-
-		modules = buildModuleListForHostname(hostname)
-
-		availableModulesByHostname[hostname] = [].concat(
-			availableUtilities
-			modules
-		)
-
-		modules
+		availableModulesByHostname[hostname] = buildModuleListForHostname(hostname)
 
 	hostnames = _.union(
 		Object.keys(userConfig)
@@ -153,10 +145,11 @@ getConfig = ->
 		else
 			siteModules = [].concat(
 				availableModulesByHostname["global"]
-				(availableModulesByHostname[hostname] || availableUtilities)
+				(availableModulesByHostname[hostname] || [])
 			)
 
-		enabledForHost = _.intersection(siteModules, configModules)
+		availableForHost = [].concat availableUtilities, siteModules
+		enabledForHost = _.intersection(availableForHost, configModules)
 		invalidForHost = _.xor(enabledForHost, configModules)
 
 		if enabledForHost.length > 0

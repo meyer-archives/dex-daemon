@@ -29,10 +29,10 @@ module.exports = (server, restify) ->
 		urlHandler.moduleGenerate
 	)
 
-	# Generate a specific file
+	# Get all data in stringy format
 	server.get(
-		/^\/generate\/(global|[^\/]+\.[^\/]+)(\.(css|json|js))?$/
-		urlHandler.moduleGenerate
+		"getdata"
+		urlHandler.getModuleData
 	)
 
 	# Load module CSS/JS/JSON
