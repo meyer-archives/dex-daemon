@@ -7,9 +7,10 @@ module.exports = (request, response, next) ->
 	[hostname, ext] = _.values request.params
 	cleanHostname = urlUtils.cleanHostname(hostname)
 
-	# TODO: redirect to correct file
 	if cleanHostname != hostname
-		request.url = request.url.replace(hostname, cleanHostname)
+		response.header 'Location', request.url.replace(hostname, cleanHostname)
+		response.send 302
+		return next(false)
 
 	filename = path.resolve path.join(global.dex_cache_dir, request.url)
 
@@ -21,5 +22,4 @@ module.exports = (request, response, next) ->
 	if !fs.existsSync filename
 		request.url = "/_default.#{ext}"
 
-	do next
-	return
+	next()

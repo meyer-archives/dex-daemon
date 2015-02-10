@@ -8,7 +8,10 @@ module.exports = (server, restify) ->
 		maxAge: 60 * 60 * 12 # 12 hours
 	}
 
+	# Add CORS headers
 	server.use restify.CORS()
+
+	# Be nice to CURL
 	server.pre restify.pre.userAgentConnection()
 
 	# Module index

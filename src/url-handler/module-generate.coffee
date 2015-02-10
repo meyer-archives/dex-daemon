@@ -25,7 +25,6 @@ module.exports = (request, response, next) ->
 
 			["_default"].concat(Object.keys modulesByHostname.enabled).forEach (hostname) ->
 				buildSiteFiles urlUtils.cleanHostname(hostname), config
-				console.log ""
 
 			response.send 200, config
 			do next
@@ -95,7 +94,7 @@ buildFile = (hostname, allFiles, enabledFiles) ->
 
 				#{data}
 
-				console.groupEnd("#{f}#{c}")
+				console.groupEnd();
 				"""
 
 			else

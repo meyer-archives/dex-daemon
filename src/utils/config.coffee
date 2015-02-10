@@ -87,9 +87,9 @@ getConfig = ->
 		try
 			process.chdir path.join(global.dex_file_dir, hostname)
 
-			modulePaths = fs.readdirSync(".").filter(_dirsOnly).map (module) ->
+			modulePaths = fs.readdirSync(".").filter(_dirsOnly).map (mod) ->
 				metadata = {}
-				modulePath = path.join(hostname, module)
+				modulePath = path.join(hostname, mod)
 				infoYaml = path.join(global.dex_file_dir, modulePath, "info.yaml")
 
 				try
@@ -104,7 +104,7 @@ getConfig = ->
 					URL: null
 				}, metadata, {
 					Category: hostname
-					Title: module
+					Title: mod
 				}
 
 				if typeof metadata["Description"] == "string"
