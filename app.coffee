@@ -11,13 +11,11 @@ global.dex_dir = process.cwd()
 global.dex_public_dir = path.join(global.dex_dir, "public")
 
 # Set defaults
-process.env.DEX_CONFIG_DIR = process.env.DEX_CONFIG_DIR || global.dex_public_dir
-process.env.DEX_CACHE_DIR = process.env.DEX_CACHE_DIR || global.dex_public_dir
 process.env.DEX_FILE_DIR = process.env.DEX_FILE_DIR || path.join(global.dex_public_dir, "demo-modules")
 
 # Get absolute paths
-global.dex_yaml_config_file = path.resolve(process.env.DEX_CONFIG_DIR, ".dex-enabled.yaml")
-global.dex_cache_dir = path.resolve(process.env.DEX_CACHE_DIR, ".dex-cache")
+global.dex_yaml_config_file = path.resolve(process.env.DEX_FILE_DIR, "enabled.yaml")
+global.dex_cache_dir = path.resolve(process.env.DEX_FILE_DIR, ".dex-cache")
 global.dex_file_dir = path.resolve(process.env.DEX_FILE_DIR)
 
 # Make sure all this stuff exists

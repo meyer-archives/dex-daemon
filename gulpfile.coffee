@@ -11,7 +11,7 @@ sslOptions = require "./ssl/options"
 
 gulp.task "default", ->
 	nodemon({
-		nodeArgs: ["--nodejs", "--debug"]
+		# nodeArgs: ["--nodejs", "--debug"]
 	})
 
 gulp.task "lint", ->

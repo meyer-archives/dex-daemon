@@ -10,11 +10,6 @@ coffee = require "coffee-script"
 configUtils = require "../utils/config"
 globtions = _.extend configUtils.globtions, nodir: true
 
-uggs = require "uglify-js"
-uglifyOptions = fromString: true
-
-cssmin = require "cssmin"
-
 
 buildFile = (f) ->
 	data = fs.readFileSync path.join(global.dex_file_dir, f), encoding: "utf8"
@@ -46,7 +41,7 @@ buildFile = (f) ->
 			"""
 			/* @begin #{f}#{c} */
 
-			#{cssmin data}
+			#{data}
 
 			/* @end #{f}#{c} */
 			"""
@@ -55,7 +50,7 @@ buildFile = (f) ->
 			"""
 			console.group("#{f}#{c}");
 
-			#{uggs.minify(data, uglifyOptions).code}
+			#{data}
 
 			console.groupEnd();
 			"""

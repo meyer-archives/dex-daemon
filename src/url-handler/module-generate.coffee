@@ -23,7 +23,7 @@ module.exports = (request, response, next) ->
 			fs.deleteSync global.dex_cache_dir
 			fs.mkdirpSync global.dex_cache_dir
 
-			["_default"].concat(Object.keys modulesByHostname.enabled).forEach (hostname) ->
+			["404"].concat(Object.keys modulesByHostname.enabled).forEach (hostname) ->
 				buildSiteFiles urlUtils.cleanHostname(hostname), config
 
 			response.send 200, config
@@ -35,7 +35,7 @@ module.exports = (request, response, next) ->
 				siteFiles = buildSiteFiles(hostname, config)
 			else
 				console.log "modulesByHostname does not contain \"#{prams[0]}\""
-				siteFiles = buildSiteFiles("_default", config)
+				siteFiles = buildSiteFiles("404", config)
 
 			response.send 200, siteFiles
 			do next
@@ -147,7 +147,7 @@ buildSiteFiles = (hostname, config) ->
 	enabledJSFiles = []
 	enabledCSSFiles = []
 
-	if hostname == "_default"
+	if hostname == "404"
 		console.log "Building default files".underline
 
 		siteConfig = {

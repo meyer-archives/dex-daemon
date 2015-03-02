@@ -6,6 +6,7 @@ module.exports = (server, restify) ->
 	staticOptions = {
 		directory: global.dex_cache_dir
 		maxAge: 60 * 60 * 12 # 12 hours
+		charSet: "UTF-8"
 	}
 
 	# Add CORS headers
@@ -40,28 +41,16 @@ module.exports = (server, restify) ->
 
 	# Load module CSS/JS/JSON
 	server.get(
-		/^\/(global|[^\/]+\.[^\/]+)\.(css|js|json)$/
+		/^\/([^\/]+)\.(css|js|json)$/
 		urlHandler.moduleContents
 		restify.serveStatic staticOptions
 	)
 
 	# Config update
 	server.post(
-		/^\/(global|[^\/]+\.[^\/]+)\.json$/
+		/^\/([^\/]+)\.json$/
 		urlHandler.configPost
 		restify.serveStatic staticOptions
-	)
-
-	# Edit existing modules
-	server.get(
-		/^\/edit\/([^\/]+)/
-		urlHandler.moduleEdit
-	)
-
-	# Create new modules
-	server.get(
-		/^\/create\/(global|utilities|[^\/]+\.[^\/]+)\/([^\/]+)$/
-		urlHandler.moduleCreate
 	)
 
 	server.pre urlHandler.beforeRequest
