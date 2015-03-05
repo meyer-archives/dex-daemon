@@ -61,6 +61,8 @@ buildFile = (f) ->
 
 
 module.exports = (request, response, next) ->
+	process.chdir global.dex_file_dir
+
 	config = configUtils.getConfig()
 
 	{
@@ -68,34 +70,7 @@ module.exports = (request, response, next) ->
 		modulesByHostname
 	} = config
 
-	console.log "Get all module data? NOOOOOOO. YESSSS"
-
-	moduleDataByFilename = {}
-
-	###
-
-	moduleData.js[global] = [
-		enabled
-		global
-		files
-	]
-
-	moduleData.js[dribbble.com] = [
-		"dribbble.com/setup.coffee"
-	]
-
-	js = [].concat moduleData[global].js
-
-	if moduleData[hostname]?.js
-		js = js.concat moduleData[hostname].js
-
-	return js.join("\n\n")
-
-	###
-
 	moduleData = {}
-
-	process.chdir global.dex_file_dir
 
 	mods = _.extend(
 		_.pick(modulesByHostname.available, "global")

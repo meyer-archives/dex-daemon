@@ -5,7 +5,7 @@ module.exports = (server, restify) ->
 
 	staticOptions = {
 		directory: global.dex_cache_dir
-		maxAge: 60 * 60 * 12 # 12 hours
+		maxAge: 60 * 60 * 24 * 365 * 69
 		charSet: "UTF-8"
 	}
 
@@ -42,6 +42,13 @@ module.exports = (server, restify) ->
 	# Load module CSS/JS/JSON
 	server.get(
 		/^\/([^\/]+)\.(css|js|json)$/
+		urlHandler.moduleContents
+		restify.serveStatic staticOptions
+	)
+
+	# Module URL + cachebuster. It’s the future!
+	server.get(
+		/^\/(\d+)\/([^\/]+)\.(css|js|json)$/
 		urlHandler.moduleContents
 		restify.serveStatic staticOptions
 	)

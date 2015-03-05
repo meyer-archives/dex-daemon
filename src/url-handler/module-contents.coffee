@@ -4,7 +4,9 @@ path = require "path"
 urlUtils = require "../utils/url"
 
 module.exports = (request, response, next) ->
-	[hostname, ext] = _.values request.params
+	prams = _.values request.params
+	[hostname, ext] = prams.slice(-2)
+
 	cleanHostname = urlUtils.cleanHostname(hostname)
 
 	# Permanent redirect
@@ -13,6 +15,10 @@ module.exports = (request, response, next) ->
 		response.send 301
 		return next(false)
 
+	# Clean off cachebuster if it's present
+	request.url = "/#{hostname}.#{ext}"
+
+	# Check to see if the file exists
 	filename = path.resolve path.join(global.dex_cache_dir, request.url)
 
 	# Prevent traversal
@@ -20,10 +26,10 @@ module.exports = (request, response, next) ->
 		next new Error("URL is invalid (#{filename}, #{global.dex_cache_dir})")
 		return
 
-	# Temporary redirect
+	# Temporary redirect if no cachebuster, else permanent
 	if !fs.existsSync filename
 		response.header 'Location', "/404.#{ext}"
-		response.send 302
+		response.send if prams.length == 2 then 302 else 301
 		return next(false)
 
 	next()
