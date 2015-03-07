@@ -9,12 +9,6 @@ module.exports = (request, response, next) ->
 
 	cleanHostname = urlUtils.cleanHostname(hostname)
 
-	# Permanent redirect
-	if cleanHostname != hostname
-		response.header 'Location', request.url.replace(hostname, cleanHostname)
-		response.send 301
-		return next(false)
-
 	# Clean off cachebuster if it's present
 	request.url = "/#{hostname}.#{ext}"
 
@@ -30,6 +24,12 @@ module.exports = (request, response, next) ->
 	if !fs.existsSync filename
 		response.header 'Location', "/404.#{ext}"
 		response.send if prams.length == 2 then 302 else 301
+		return next(false)
+
+	# Redirect to clean hostname if necessary
+	if cleanHostname != hostname
+		response.header 'Location', request.url.replace(hostname, cleanHostname)
+		response.send 301
 		return next(false)
 
 	next()
