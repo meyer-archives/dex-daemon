@@ -1,10 +1,41 @@
 colors = require "colors"
+requestEndTimeout = false
 
 module.exports = (request, response, e) ->
-	console.log ("#{request.method}".bold + " #{request.originalURL}").green
-	console.log "Response: #{response.statusCode.toString().bold}"
+	clearTimeout requestEndTimeout
+
+	statusCode = "#{response.statusCode}"
+
+	switch statusCode.slice(0,2)
+		when "20"
+			statusCode = statusCode.green
+		when "30"
+			statusCode = statusCode.yellow
+		when "50"
+			statusCode = statusCode.red
+
+
+	now = new Date
+
+	log = [
+		[
+			"["
+			"#{now.toString().split(" ")[4]}".yellow
+			"."
+			"#{(now.getMilliseconds() + 10000).toString().slice(1)}".yellow
+			"]"
+		].join("")
+		# "#{request.method}"
+		"#{statusCode}"
+		"#{request.originalURL}"
+	]
 
 	if ~[301, 302].indexOf response.statusCode
-		console.log "Redirecting to #{response.getHeader("Location").toString().bold}"
+		log.push "-->"
+		log.push response.getHeader("Location")
 
-	console.log "=================".grey
+	requestEndTimeout = setTimeout(() ->
+		console.log "=================".grey
+	, 500)
+
+	console.log log.join(" ")

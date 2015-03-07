@@ -2,6 +2,7 @@
 
 fs = require "fs-extra"
 path = require "path"
+colors = require "colors"
 restify = require "restify"
 
 pkg = require "./package.json"
@@ -45,5 +46,6 @@ server.pre restify.pre.userAgentConnection()
 
 server.listen process.env.DEX_PORT || 3131, ->
 	console.log "Server running at %s", server.url
+	console.log "=================".grey
 
 require("./src/routes")(server, restify)
