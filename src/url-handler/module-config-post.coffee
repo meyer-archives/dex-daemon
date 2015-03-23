@@ -1,7 +1,9 @@
-module.exports = (request, response, next) ->
-	body = "module-config-update (params: #{request.params.join ", "})"
+logger = require "../utils/log"
 
-	response.send 200, body
-	console.log body
+module.exports = (req, res, next) ->
+	body = "module-config-update (params: #{req.params.join ", "})"
+
+	res.send 200, body
+	logger.debug body
 
 	do next

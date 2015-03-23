@@ -5,6 +5,7 @@ yaml = require "js-yaml"
 glob = require("glob")
 pkg = require "../../package.json"
 marked = require "marked"
+logger = require "./log"
 
 markedOptions =
 	renderer: do (r = new marked.Renderer) ->
@@ -62,10 +63,9 @@ getConfig = ->
 			global.dex_yaml_config_file,
 			encoding: "utf8"
 		)
-		console.info "Loaded #{global.dex_yaml_config_file}".bold
-		console.info "#{Object.keys(userConfig).length} sites configured.\n"
+		logger.info "Loaded #{global.dex_yaml_config_file}. #{Object.keys(userConfig).length} sites configured."
 	catch e
-		console.error "YAML load error! #{e}"
+		logger.error "YAML load error! #{e}"
 		return {}
 
 	unless typeof userConfig == "object"
@@ -95,7 +95,7 @@ getConfig = ->
 				try
 					metadata = yaml.safeLoad fs.readFileSync(infoYaml, "utf8")
 				catch e
-					console.error "YAML load error (#{modulePath}/info.yaml): #{e}"
+					logger.error {error: e}, "YAML load error"
 					metadata = {}
 
 				metadata = _.extend {
@@ -115,7 +115,7 @@ getConfig = ->
 				modulePath
 
 		catch e
-			console.log "buildModuleListForHostname error: #{e}"
+			logger.log "buildModuleListForHostname error: #{e}"
 			modulePaths = {}
 
 		process.chdir global.dex_file_dir

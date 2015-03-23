@@ -7,6 +7,7 @@ pem = require "pem"
 nodemon = require "gulp-nodemon"
 coffeelint = require "gulp-coffeelint"
 
+logger = require "./src/utils/log"
 sslOptions = require "./ssl/options"
 
 gulp.task "default", ->
@@ -22,7 +23,7 @@ gulp.task "lint", ->
 gulp.task "gimmekeys", (done) ->
 	pem.createCertificate sslOptions, (err, keys) ->
 		if err
-			console.log "OpenSSL error:", err
+			logger.log "OpenSSL error:", err
 			done()
 			return
 

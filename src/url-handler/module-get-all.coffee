@@ -10,6 +10,7 @@ coffee = require "coffee-script"
 configUtils = require "../utils/config"
 globtions = _.extend configUtils.globtions, nodir: true
 
+logger = require "../utils/log"
 
 buildFile = (f) ->
 	data = fs.readFileSync path.join(global.dex_file_dir, f), encoding: "utf8"
@@ -79,7 +80,7 @@ module.exports = (request, response, next) ->
 	)
 
 	_.each mods, (hostModules, hostname) ->
-		console.log "wow", hostModules
+		logger.log hostModules: hostModules, "Host Modules"
 		if hostname == "utilities"
 			hostname = []
 

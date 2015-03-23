@@ -6,6 +6,7 @@ colors = require "colors"
 restify = require "restify"
 
 pkg = require "./package.json"
+logger = require "./src/utils/log"
 
 # Save cwd as it's about to change
 global.dex_dir = process.cwd()
@@ -35,6 +36,7 @@ process.chdir global.dex_file_dir
 serverOptions =
 	name: pkg.name
 	version: pkg.version
+	log: logger
 	httpsServerOptions:
 		key:  fs.readFileSync path.join(global.dex_dir, "ssl", "server.key")
 		cert: fs.readFileSync path.join(global.dex_dir, "ssl", "server.crt")

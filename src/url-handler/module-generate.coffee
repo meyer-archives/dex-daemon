@@ -4,11 +4,12 @@ path = require "path"
 glob = require "glob"
 urlUtils = require "../utils/url"
 configUtils = require "../utils/config"
+logger = require "../utils/log"
 
 sass = require "node-sass"
 coffee = require "coffee-script"
 
-module.exports = (request, response, next) ->
+module.exports = (req, res, next) ->
 	config = configUtils.getConfig()
 
 	{
@@ -16,7 +17,7 @@ module.exports = (request, response, next) ->
 		modulesByHostname
 	} = config
 
-	prams = _.values(request.params)
+	prams = _.values(req.params)
 
 	switch prams.length
 		when 0
@@ -26,7 +27,7 @@ module.exports = (request, response, next) ->
 			["404"].concat(Object.keys modulesByHostname.enabled).forEach (hostname) ->
 				buildSiteFiles urlUtils.cleanHostname(hostname), config
 
-			response.send 200, config
+			res.send 200, config
 			do next
 
 		when 1
@@ -34,14 +35,14 @@ module.exports = (request, response, next) ->
 			if modulesByHostname.enabled[hostname]
 				siteFiles = buildSiteFiles(hostname, config)
 			else
-				console.log "modulesByHostname does not contain \"#{prams[0]}\""
+				logger.info "modulesByHostname does not contain \"#{prams[0]}\""
 				siteFiles = buildSiteFiles("404", config)
 
-			response.send 200, siteFiles
+			res.send 200, siteFiles
 			do next
 
 		else
-			console.error "TOO MANY COOKS:", prams
+			logger.error "TOO MANY COOKS:", prams
 
 globArray = (d) ->
 	if Array.isArray(d) && d.length > 1
@@ -148,8 +149,6 @@ buildSiteFiles = (hostname, config) ->
 	enabledCSSFiles = []
 
 	if hostname == "404"
-		console.log "Building default files".underline
-
 		siteConfig = {
 			site_available:   modulesByHostname.utilities
 			site_enabled:     []
@@ -158,24 +157,18 @@ buildSiteFiles = (hostname, config) ->
 			metadata
 		}
 
-		console.log "[x] #{jsFilename}"
 		fs.writeFile jsFilename, "/* I can't even. */"
-
-		console.log "[x] #{cssFilename}"
 		fs.writeFile cssFilename, "/* Nothin' here, man. */"
-
-		console.log "[x] #{jsonFilename}"
 		fs.writeFile jsonFilename, JSON.stringify(siteConfig, null, "  ")
 
-		console.log ""
+		logger.info files: [jsFilename, cssFilename, jsonFilename], "Built default files"
 
 		return siteConfig
 
-	console.log "Building files for #{hostname} (#{(modulesByHostname.enabled[hostname] || []).length})".underline
+	fileList = []
 
 	if process.cwd() != global.dex_file_dir
-		console.error "PWD has been changed!"
-		console.error "#{process.cwd()} != #{global.dex_file_dir}"
+		logger.error {actualCWD: process.cwd(), expectedCWD: global.dex_file_dir}, "PWD has been unexpectedly changed."
 		process.chdir global.dex_file_dir
 
 	# Start with available utilities
@@ -199,17 +192,13 @@ buildSiteFiles = (hostname, config) ->
 	# Build JS, CSS, and JSON files for hostname
 	if enabledJSFiles.length > 0
 		jsData = buildFile(hostname, jsFiles, enabledJSFiles)
-		console.log "[x] #{jsFilename}"
+		fileList.push jsFilename
 		fs.writeFile jsFilename, jsData
-	else
-		console.log "[ ] #{jsFilename}"
 
 	if enabledCSSFiles.length > 0
 		cssData = buildFile(hostname, cssFiles, enabledCSSFiles)
-		console.log "[x] #{cssFilename}"
+		fileList.push cssFilename
 		fs.writeFile cssFilename, cssData
-	else
-		console.log "[ ] #{cssFilename}"
 
 	siteConfig = {}
 
@@ -224,11 +213,12 @@ buildSiteFiles = (hostname, config) ->
 			}
 			jsonData = JSON.stringify(siteConfig, null, "  ")
 
-			console.log "[x] #{jsonFilename}"
+			fileList.push  jsonFilename
 			fs.writeFile jsonFilename, jsonData
-		else
-			console.log "[ ] #{jsonFilename}"
 
-	console.log ""
+	logger.info {
+		modules: modulesByHostname.enabled[hostname]
+		files: fileList
+	}, "Built files for #{hostname}"
 
 	siteConfig
