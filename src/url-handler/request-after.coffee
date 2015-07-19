@@ -34,8 +34,10 @@ module.exports = (request, response, e) ->
 		log.push "-->"
 		log.push response.getHeader("Location")
 
+	console.log log.join(" ")
+
 	requestEndTimeout = setTimeout(() ->
 		console.log "=================".grey
 	, 500)
 
-	console.log log.join(" ")
+	return

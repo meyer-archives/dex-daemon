@@ -33,20 +33,14 @@ module.exports = (server, restify) ->
 		urlHandler.moduleGenerate
 	)
 
-	# Get all data in stringy format
-	server.get(
-		"getdata"
-		urlHandler.getModuleData
-	)
-
-	# Load module CSS/JS/JSON
+	# Load module CSS/JS/JSON without a cachebuster
 	server.get(
 		/^\/([^\/]+)\.(css|js|json)$/
 		urlHandler.moduleContents
 		restify.serveStatic staticOptions
 	)
 
-	# Module URL + cachebuster. It’s the future!
+	# Load module CSS/JS/JSON with a cachebuster
 	server.get(
 		/^\/(\d+)\/([^\/]+)\.(css|js|json)$/
 		urlHandler.moduleContents

@@ -1,5 +1,5 @@
 {
-    "verbose": true,
+    "verbose": false,
     "ext": "coffee",
     "watch": ["app.coffee", "./src"],
     "ignore": [
