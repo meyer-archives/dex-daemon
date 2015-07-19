@@ -6,6 +6,8 @@ urlUtils = require "../utils/url"
 configUtils = require "../utils/config"
 logger = require "../utils/log"
 
+compileSiteFile = require "../utils/buildfile"
+
 sass = require "node-sass"
 coffee = require "coffee-script"
 
@@ -51,55 +53,7 @@ globArray = (d) ->
 		"#{d}"
 
 buildFile = (hostname, allFiles, enabledFiles) ->
-	returnData = allFiles.map (f) ->
-		return false unless ~enabledFiles.indexOf(f)
-
-		data = fs.readFileSync path.join(global.dex_file_dir, f), encoding: "utf8"
-
-		c = ""
-		ext = path.extname(f)
-
-		switch ext
-			when ".scss", ".sass"
-				try
-					data = sass.renderSync({data}).css
-					c = " (compiled)"
-				catch e
-					console.error "\nSass compile error".red
-					console.error "#{e}"
-					data = "/* Sass compile error: #{e} */"
-
-			when ".coffee"
-				try
-					data = coffee.compile(data)
-					c = " (compiled)"
-				catch e
-					console.error "\nCoffeeScript compile error".red
-					console.error "#{path.join global.dex_file_dir, f}:#{e.location.first_line+1}:#{e.location.first_column+1}".underline
-					console.log "\n#{e}"
-					data = "console.error(\"CoffeeScript compile error: #{e.toString()}\");"
-
-		switch ext
-			when ".css", ".scss", ".sass"
-				"""
-				/* @begin #{f}#{c} */
-
-				#{data}
-
-				/* @end #{f}#{c} */
-				"""
-
-			when ".js", ".coffee"
-				"""
-				console.group("#{f}#{c}");
-
-				#{data}
-
-				console.groupEnd();
-				"""
-
-			else
-				console.error "Unsupported filetype: #{ext}"
+	returnData = enabledFiles.map(compileSiteFile)
 
 	"""
 	/*
