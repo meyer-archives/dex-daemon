@@ -6,6 +6,7 @@ colors = require "colors"
 restify = require "restify"
 
 pkg = require "./package.json"
+expandPath = require("./src/utils/path").expand
 logger = require "./src/utils/log"
 
 # Save cwd as it's about to change

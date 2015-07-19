@@ -10,7 +10,7 @@
     ],
     "env": {
         "DEX_PORT": "3131",
-        "DEX_FILE_DIR": "/Users/meyer/Repositories/dexfiles"
+        "DEX_FILE_DIR": "~/Repositories/dexfiles"
     },
     "events": {
         "restart": "osascript -e 'display notification \"app restarted\" with title \"nodemon\"'"
