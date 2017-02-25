@@ -1,5 +1,9 @@
 _ = require "lodash"
 
+genRegex = "generate/"
+modRegex = "(global|[^\/]+\\.[^\/]+)"
+cbRegex = "(?:\d+\/)?" # optional cachebuster
+
 module.exports = (server, restify) ->
 	urlHandler = require "./url-handler"
 
@@ -27,29 +31,24 @@ module.exports = (server, restify) ->
 		urlHandler.moduleGenerate
 	)
 
-	# Generate all files for specific site
+	# Generate files for a specific site, load ’em
 	server.get(
-		/^\/generate\/(global|[^\/]+\.[^\/]+)$/
+		///^\/#{genRegex}#{modRegex}\.(css|js|json)$///
 		urlHandler.moduleGenerate
-	)
-
-	# Load module CSS/JS/JSON without a cachebuster
-	server.get(
-		/^\/([^\/]+)\.(css|js|json)$/
 		urlHandler.moduleContents
 		restify.serveStatic staticOptions
 	)
 
-	# Load module CSS/JS/JSON with a cachebuster
+	# Load module CSS/JS/JSON
 	server.get(
-		/^\/(\d+)\/([^\/]+)\.(css|js|json)$/
+		///^\/(?:\d+\/)?#{modRegex}\.(css|js|json)$///
 		urlHandler.moduleContents
 		restify.serveStatic staticOptions
 	)
 
-	# Config update
+	# Update YAML config file
 	server.post(
-		/^\/([^\/]+)\.json$/
+		///^\/#{modRegex}\.json$///
 		urlHandler.configPost
 		restify.serveStatic staticOptions
 	)

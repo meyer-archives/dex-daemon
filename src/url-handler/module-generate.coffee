@@ -20,6 +20,7 @@ module.exports = (req, res, next) ->
 	} = config
 
 	prams = _.values(req.params)
+	logger.info "PRAMS:", req.params
 
 	switch prams.length
 		when 0
@@ -30,21 +31,26 @@ module.exports = (req, res, next) ->
 				buildSiteFiles urlUtils.cleanHostname(hostname), config
 
 			res.send 200, config
-			do next
 
-		when 1
+		# hostname, ext
+		when 2
 			hostname = urlUtils.cleanHostname(prams[0])
+
 			if modulesByHostname.enabled[hostname]
 				siteFiles = buildSiteFiles(hostname, config)
 			else
 				logger.info "modulesByHostname does not contain \"#{prams[0]}\""
 				siteFiles = buildSiteFiles("404", config)
 
-			res.send 200, siteFiles
-			do next
+			if prams[1] == "json"
+				res.send 200, siteFiles
+				return next(false)
 
 		else
-			logger.error "TOO MANY COOKS:", prams
+			logger.error "TOO MANY COOKS (#{prams.length}):", prams
+			res.send 404, ":("
+
+	do next
 
 globArray = (d) ->
 	if Array.isArray(d) && d.length > 1
